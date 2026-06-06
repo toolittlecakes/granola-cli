@@ -1,0 +1,37 @@
+{
+  "name": "@toolittlecakes/granola-cli",
+  "version": "0.1.0",
+  "description": "JSON-first CLI for the official Granola Public API.",
+  "type": "module",
+  "bin": {
+    "granola-cli": "./bin/granola-cli"
+  },
+  "files": [
+    "bin",
+    "src",
+    "skill-data",
+    "skills",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "check": "node --check src/index.js && node --check src/granola-api.js && node --check src/auth.js && node --check src/export.js && node --check src/render.js && node --check src/update-gate.js && node --check test/smoke.js",
+    "smoke": "node test/smoke.js",
+    "pack:dry": "npm pack --dry-run"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/toolittlecakes/granola-cli.git"
+  },
+  "keywords": [
+    "granola",
+    "cli",
+    "meeting-notes",
+    "transcripts"
+  ],
+  "author": "toolittlecakes",
+  "license": "MIT"
+}
