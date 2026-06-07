@@ -17,6 +17,8 @@ jobs:
         with:
           node-version: 22
           registry-url: https://registry.npmjs.org
+          package-manager-cache: false
       - run: npm ci
-      - run: npm test --if-present
-      - run: npm publish --provenance --access public
+      - run: npm run check
+      - run: npm run smoke
+      - run: npm publish --access public
