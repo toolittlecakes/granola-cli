@@ -4,16 +4,16 @@ JSON-first CLI for the official Granola Public API.
 
 ## Install
 
-Before npm publication:
-
-```bash
-npm install -g git+https://github.com/toolittlecakes/granola-cli.git
-```
-
-After npm publication:
+Use the published npm package:
 
 ```bash
 npm install -g @toolittlecakes/granola-cli@latest
+```
+
+For local development from GitHub:
+
+```bash
+npm install -g git+https://github.com/toolittlecakes/granola-cli.git
 ```
 
 ## Auth
@@ -75,7 +75,7 @@ For one local/dev command:
 granola-cli --skip-updates status
 ```
 
-Before npm publication, GitHub installs should use `--skip-updates` because the npm registry entry may not exist yet.
+GitHub installs should use `--skip-updates` because the update gate compares against the published npm package.
 
 ## API Surface
 
