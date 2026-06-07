@@ -1,6 +1,6 @@
 {
   "name": "@toolittlecakes/granola-cli",
-  "version": "0.2.3",
+  "version": "0.2.4",
   "description": "JSON-first CLI for the official Granola Public API.",
   "type": "module",
   "bin": {
