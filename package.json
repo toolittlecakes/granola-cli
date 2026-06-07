@@ -4,7 +4,7 @@
   "description": "JSON-first CLI for the official Granola Public API.",
   "type": "module",
   "bin": {
-    "granola-cli": "./bin/granola-cli"
+    "granola-cli": "bin/granola-cli"
   },
   "files": [
     "bin",
