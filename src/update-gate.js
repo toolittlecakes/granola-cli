@@ -1,7 +1,7 @@
 import { CliError } from "./errors.js";
+import { PACKAGE_NAME, VERSION } from "./package-meta.js";
 
-export const PACKAGE_NAME = "@toolittlecakes/granola-cli";
-export const VERSION = "0.2.0";
+export { PACKAGE_NAME, VERSION };
 
 function parseVersion(version) {
   const match = String(version).match(/^(\d+)\.(\d+)\.(\d+)$/);
