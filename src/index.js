@@ -1,7 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { getApiKey, hasConfiguredApiKey } from "./auth.js";
+import { clearApiKey, getApiKey, getAuthStatus, hasConfiguredApiKey, saveApiKey } from "./auth.js";
 import { CliError, normalizeError } from "./errors.js";
 import { exportFolder } from "./export.js";
 import { GranolaApi } from "./granola-api.js";
@@ -18,6 +18,9 @@ Official Granola Public API CLI.
 Usage:
   granola-cli [--skip-updates] help
   granola-cli [--skip-updates] skill
+  granola-cli [--skip-updates] auth <token>
+  granola-cli [--skip-updates] auth status [--json]
+  granola-cli [--skip-updates] auth clear
   granola-cli [--skip-updates] setup --agents codex,claude
   granola-cli [--skip-updates] status [--check-api] [--json]
   granola-cli [--skip-updates] folders list [--all] [--json]
@@ -29,7 +32,7 @@ Usage:
   granola-cli [--skip-updates] export folder <name-or-id> --out <dir> [--skip-existing] [--refresh-changed]
 
 Auth:
-  Set GRANOLA_API_KEY in the environment or ~/.env.
+  Run granola-cli auth <token> once. The token is stored in ~/.granola-cli/config.json.
 
 Docs:
   https://docs.granola.ai/introduction
@@ -81,7 +84,7 @@ async function commandStatus(args, globals) {
     package: PACKAGE_NAME,
     version: VERSION,
     auth: {
-      env: "GRANOLA_API_KEY",
+      configPath: getAuthStatus().configPath,
       configured: hasConfiguredApiKey()
     },
     apiBaseUrl: "https://public-api.granola.ai/v1"
@@ -94,7 +97,7 @@ async function commandStatus(args, globals) {
   if (globals.json) return result;
   return [
     `granola-cli ${VERSION}`,
-    `auth: ${result.auth.configured ? "configured" : "missing GRANOLA_API_KEY"}`,
+    `auth: ${result.auth.configured ? "configured" : "not configured"}`,
     `api: ${hasFlag(args, "--check-api") ? "reachable" : "not checked"}`
   ].join("\n");
 }
@@ -187,6 +190,26 @@ async function commandSkill() {
   return fs.readFileSync(path.join(ROOT_DIR, "skill-data", "core", "SKILL.md"), "utf8");
 }
 
+async function commandAuth(args, globals) {
+  const sub = args[0];
+  if (!sub || sub === "status") {
+    const status = getAuthStatus();
+    if (globals.json) return { ok: true, auth: status };
+    return [
+      `auth: ${status.configured ? "configured" : "not configured"}`,
+      `config: ${status.configPath}`,
+      `state: ${status.stateDir}`
+    ].join("\n");
+  }
+  if (sub === "clear" || sub === "logout") {
+    const configPath = clearApiKey();
+    return globals.json ? { ok: true, configured: false, configPath } : `auth cleared: ${configPath}`;
+  }
+  if (sub.startsWith("--")) throw new CliError("INVALID_ARGUMENT", `Unknown auth option: ${sub}`);
+  const configPath = saveApiKey(sub);
+  return globals.json ? { ok: true, configured: true, configPath } : `auth saved: ${configPath}`;
+}
+
 async function commandSetup(args) {
   const agents = (readOption(args, "--agents", "") || "")
     .split(",")
@@ -225,6 +248,7 @@ export async function main(argv) {
     let result;
     if (command === "help" || command === "--help" || command === "-h") result = usage();
     else if (command === "skill") result = await commandSkill();
+    else if (command === "auth") result = await commandAuth(rest.slice(1), globals);
     else if (command === "setup") result = await commandSetup(rest.slice(1));
     else if (command === "status") result = await commandStatus(rest.slice(1), globals);
     else if (command === "folders") result = await commandFolders(rest.slice(1), globals);

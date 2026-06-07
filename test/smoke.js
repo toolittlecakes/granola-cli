@@ -1,12 +1,17 @@
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
+import fs from "node:fs";
+import os from "node:os";
+import path from "node:path";
 import { isNewerVersion } from "../src/update-gate.js";
+
+const tmpHome = fs.mkdtempSync(path.join(os.tmpdir(), "granola-cli-test-"));
 
 function run(args) {
   return spawnSync(process.execPath, ["bin/granola-cli", "--skip-updates", ...args], {
     cwd: new URL("..", import.meta.url),
     encoding: "utf8",
-    env: { ...process.env, GRANOLA_API_KEY: "", GRANOLA_CLI_ENV_FILE: "/dev/null" }
+    env: { ...process.env, GRANOLA_CLI_HOME: tmpHome }
   });
 }
 
@@ -31,5 +36,15 @@ assert.equal(parsed.auth.configured, false);
 const missingAuth = run(["folders", "list", "--json"]);
 assert.notEqual(missingAuth.status, 0);
 assert.match(missingAuth.stdout, /AUTH_REQUIRED/);
+
+const auth = run(["auth", "test-token", "--json"]);
+assert.equal(auth.status, 0, auth.stderr);
+assert.equal(JSON.parse(auth.stdout).configured, true);
+const authConfig = JSON.parse(fs.readFileSync(path.join(tmpHome, "config.json"), "utf8"));
+assert.equal(authConfig.apiKey, "test-token");
+
+const statusAfterAuth = run(["status", "--json"]);
+assert.equal(statusAfterAuth.status, 0, statusAfterAuth.stderr);
+assert.equal(JSON.parse(statusAfterAuth.stdout).auth.configured, true);
 
 console.log("smoke ok");

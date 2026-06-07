@@ -3,56 +3,91 @@ import os from "node:os";
 import path from "node:path";
 import { CliError } from "./errors.js";
 
-const DEFAULT_ENV_FILE = path.join(os.homedir(), ".env");
-
-function configuredEnvFile() {
-  return process.env.GRANOLA_CLI_ENV_FILE || DEFAULT_ENV_FILE;
+export function getStateDir() {
+  return process.env.GRANOLA_CLI_HOME || path.join(os.homedir(), ".granola-cli");
 }
 
-function parseDotenvLine(line) {
-  const trimmed = line.trim();
-  if (!trimmed || trimmed.startsWith("#")) return null;
-  const match = trimmed.match(/^([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(.*)$/);
-  if (!match) return null;
-  let value = match[2].trim();
-  if (
-    (value.startsWith('"') && value.endsWith('"')) ||
-    (value.startsWith("'") && value.endsWith("'"))
-  ) {
-    value = value.slice(1, -1);
+export function getConfigPath() {
+  return path.join(getStateDir(), "config.json");
+}
+
+export function ensureStateDir() {
+  const stateDir = getStateDir();
+  fs.mkdirSync(stateDir, { recursive: true, mode: 0o700 });
+  try {
+    fs.chmodSync(stateDir, 0o700);
+  } catch {
+    // Best effort: chmod may fail on non-POSIX filesystems.
   }
-  return [match[1], value];
+  return stateDir;
 }
 
-export function loadEnvFile(filePath = DEFAULT_ENV_FILE) {
-  if (!fs.existsSync(filePath)) return false;
-  const content = fs.readFileSync(filePath, "utf8");
-  for (const line of content.split(/\r?\n/)) {
-    const parsed = parseDotenvLine(line);
-    if (!parsed) continue;
-    const [key, value] = parsed;
-    if (process.env[key] === undefined) process.env[key] = value;
+function readConfig() {
+  const configPath = getConfigPath();
+  if (!fs.existsSync(configPath)) return {};
+  try {
+    return JSON.parse(fs.readFileSync(configPath, "utf8"));
+  } catch (error) {
+    throw new CliError(
+      "CONFIG_INVALID",
+      `Could not parse ${configPath}`,
+      `Fix or remove ${configPath}. Original error: ${error.message}`
+    );
   }
-  return true;
 }
 
-export function getApiKey({ required = true, envFile = configuredEnvFile() } = {}) {
-  if (!process.env.GRANOLA_API_KEY) loadEnvFile(envFile);
-  const apiKey = process.env.GRANOLA_API_KEY;
+function writeConfig(config) {
+  ensureStateDir();
+  const configPath = getConfigPath();
+  fs.writeFileSync(configPath, `${JSON.stringify(config, null, 2)}\n`, { mode: 0o600 });
+  try {
+    fs.chmodSync(configPath, 0o600);
+  } catch {
+    // Best effort: chmod may fail on non-POSIX filesystems.
+  }
+  return configPath;
+}
+
+export function saveApiKey(apiKey) {
+  const token = String(apiKey || "").trim();
+  if (!token) throw new CliError("INVALID_ARGUMENT", "auth requires a non-empty token");
+  const config = readConfig();
+  config.apiKey = token;
+  config.updatedAt = new Date().toISOString();
+  return writeConfig(config);
+}
+
+export function clearApiKey() {
+  const config = readConfig();
+  delete config.apiKey;
+  config.updatedAt = new Date().toISOString();
+  return writeConfig(config);
+}
+
+export function getAuthStatus() {
+  const configPath = getConfigPath();
+  const config = readConfig();
+  return {
+    configured: Boolean(config.apiKey),
+    configPath,
+    stateDir: getStateDir(),
+    updatedAt: config.updatedAt || null
+  };
+}
+
+export function getApiKey({ required = true } = {}) {
+  const config = readConfig();
+  const apiKey = config.apiKey;
   if (!apiKey && required) {
     throw new CliError(
       "AUTH_REQUIRED",
-      "GRANOLA_API_KEY is not set",
-      "Set GRANOLA_API_KEY in the environment or ~/.env"
+      "Granola API token is not configured",
+      "Run: granola-cli auth <token>"
     );
   }
   return apiKey || null;
 }
 
 export function hasConfiguredApiKey() {
-  try {
-    return Boolean(getApiKey({ required: false }));
-  } catch {
-    return false;
-  }
+  return Boolean(getApiKey({ required: false }));
 }

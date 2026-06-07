@@ -1,4 +1,5 @@
 import { CliError } from "./errors.js";
+import { VERSION } from "./update-gate.js";
 
 export const DEFAULT_BASE_URL = "https://public-api.granola.ai/v1";
 
@@ -14,8 +15,8 @@ export class GranolaApi {
     if (!apiKey) {
       throw new CliError(
         "AUTH_REQUIRED",
-        "GRANOLA_API_KEY is not set",
-        "Set GRANOLA_API_KEY in the environment or ~/.env"
+        "Granola API token is not configured",
+        "Run: granola-cli auth <token>"
       );
     }
     this.apiKey = apiKey;
@@ -30,7 +31,7 @@ export class GranolaApi {
       headers: {
         Authorization: `Bearer ${this.apiKey}`,
         Accept: "application/json",
-        "User-Agent": "granola-cli/0.1.0"
+        "User-Agent": `granola-cli/${VERSION}`
       }
     });
     const text = await response.text();
@@ -49,7 +50,7 @@ export class GranolaApi {
           : "GRANOLA_API_ERROR",
         `Granola API returned HTTP ${response.status}`,
         response.status === 401 || response.status === 403
-          ? "Check GRANOLA_API_KEY and API key scopes"
+          ? "Check the token saved with granola-cli auth and its API key scopes"
           : null,
         body
       );

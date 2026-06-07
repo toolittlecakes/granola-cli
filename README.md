@@ -18,13 +18,25 @@ npm install -g @toolittlecakes/granola-cli@latest
 
 ## Auth
 
-Create a Granola API key in the desktop app: Settings -> Connectors -> API keys. Then set:
+Create a Granola API key in the desktop app: Settings -> Connectors -> API keys. Then save it once:
 
 ```bash
-export GRANOLA_API_KEY=...
+granola-cli auth <token>
 ```
 
-The CLI also loads `GRANOLA_API_KEY` from `~/.env` if it is not already in the environment. It never prints the key.
+The token is stored in `~/.granola-cli/config.json` with file mode `0600` where supported. The CLI does not read `~/.env` and never prints the token.
+
+Check auth state:
+
+```bash
+granola-cli auth status
+```
+
+Clear auth:
+
+```bash
+granola-cli auth clear
+```
 
 ## Commands
 
