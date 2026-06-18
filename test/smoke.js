@@ -22,6 +22,7 @@ assert.equal(isNewerVersion("0.0.9", "0.1.0"), false);
 const help = run(["help"]);
 assert.equal(help.status, 0, help.stderr);
 assert.match(help.stdout, /Official Granola Public API CLI/);
+assert.match(help.stdout, /sync \[<folder-name-or-id>\] --out <dir>/);
 
 const skill = run(["skill"]);
 assert.equal(skill.status, 0, skill.stderr);

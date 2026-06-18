@@ -29,6 +29,7 @@ Usage:
   granola-cli [--skip-updates] notes get <note-id> [--include transcript] [--json]
   granola-cli [--skip-updates] notes summary <note-id> [--format markdown|json]
   granola-cli [--skip-updates] notes transcript <note-id> [--format markdown|json]
+  granola-cli [--skip-updates] sync [<folder-name-or-id>] --out <dir> [--skip-existing] [--refresh-changed]
   granola-cli [--skip-updates] export folder <name-or-id> --out <dir> [--skip-existing] [--refresh-changed]
 
 Auth:
@@ -186,6 +187,34 @@ async function commandExport(args) {
   });
 }
 
+async function commandSync(args) {
+  const explicitFolder = readOption(args, "--folder");
+  const positionalTarget = args[0] && !args[0].startsWith("--") ? args[0] : null;
+  const target = explicitFolder || positionalTarget;
+  const outDir = readOption(args, "--out");
+  if (!outDir) throw new CliError("INVALID_ARGUMENT", "sync requires --out <dir>");
+  const include = (readOption(args, "--include", "summary,transcript") || "")
+    .split(",")
+    .map((value) => value.trim())
+    .filter(Boolean);
+  const api = makeApi();
+  const folder = target ? await api.resolveFolder(target) : null;
+  return await exportFolder({
+    api,
+    folder,
+    outDir,
+    include,
+    skipExisting: hasFlag(args, "--skip-existing") || !hasFlag(args, "--overwrite"),
+    refreshChanged: hasFlag(args, "--refresh-changed"),
+    index: !hasFlag(args, "--no-index"),
+    filters: {
+      created_after: readOption(args, "--created-after"),
+      created_before: readOption(args, "--created-before"),
+      updated_after: readOption(args, "--updated-after")
+    }
+  });
+}
+
 async function commandSkill() {
   return fs.readFileSync(path.join(ROOT_DIR, "skill-data", "core", "SKILL.md"), "utf8");
 }
@@ -253,6 +282,7 @@ export async function main(argv) {
     else if (command === "status") result = await commandStatus(rest.slice(1), globals);
     else if (command === "folders") result = await commandFolders(rest.slice(1), globals);
     else if (command === "notes") result = await commandNotes(rest.slice(1), globals);
+    else if (command === "sync") result = await commandSync(rest.slice(1));
     else if (command === "export") result = await commandExport(rest.slice(1), globals);
     else throw new CliError("UNKNOWN_COMMAND", `Unknown command: ${command}`, "Run granola-cli help");
     writeResult(result, globals);

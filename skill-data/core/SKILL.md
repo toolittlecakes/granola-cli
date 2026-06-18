@@ -40,16 +40,25 @@ Fetch one note with transcript:
 granola-cli notes get not_1234567890abcd --include transcript --json
 ```
 
-Export a project folder:
+Sync a project folder:
 
 ```bash
-granola-cli export folder itquick \
+granola-cli sync itquick \
   --out calls/granola_itquick \
   --include summary,transcript \
   --skip-existing
 ```
 
-The export writes:
+Sync all notes, including notes that are not in a Granola folder/project:
+
+```bash
+granola-cli sync \
+  --out calls/granola_all \
+  --include summary,transcript \
+  --skip-existing
+```
+
+The sync/export writes:
 
 - `YYYY-MM-DD_<shortid>_<slug>.summary.md`
 - `YYYY-MM-DD_<shortid>_<slug>.transcript.md`

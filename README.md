@@ -48,6 +48,8 @@ granola-cli notes list --folder itquick --all --jsonl
 granola-cli notes get not_... --include transcript --json
 granola-cli notes summary not_... --format markdown
 granola-cli notes transcript not_... --format markdown
+granola-cli sync itquick --out calls/granola_itquick --include summary,transcript --skip-existing
+granola-cli sync --out calls/granola_all --include summary,transcript --skip-existing
 granola-cli export folder itquick --out calls/granola_itquick --include summary,transcript --skip-existing
 ```
 
