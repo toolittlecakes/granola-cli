@@ -26,7 +26,7 @@ Usage:
   granola-cli [--skip-updates] folders list [--all] [--json]
   granola-cli [--skip-updates] folders resolve <name-or-id> [--json]
   granola-cli [--skip-updates] notes list [--folder <name-or-id>] [--all] [--json|--jsonl]
-  granola-cli [--skip-updates] notes get <note-id> [--include transcript] [--json]
+  granola-cli [--skip-updates] notes get <note-id> [--include summary,transcript] [--json]
   granola-cli [--skip-updates] notes summary <note-id> [--format markdown|json]
   granola-cli [--skip-updates] notes transcript <note-id> [--format markdown|json]
   granola-cli [--skip-updates] sync [<folder-name-or-id>] --out <dir> [--skip-existing] [--refresh-changed]
@@ -38,6 +38,34 @@ Auth:
 Docs:
   https://docs.granola.ai/introduction
 `;
+}
+
+function notesUsage() {
+  return `granola-cli notes
+
+Usage:
+  granola-cli notes list [--folder <name-or-id>] [--all] [--json|--jsonl]
+  granola-cli notes get <note-id> [--include summary,transcript] [--json]
+  granola-cli notes summary <note-id> [--format markdown|json]
+  granola-cli notes transcript <note-id> [--format markdown|json]
+
+Use "notes transcript" when you only need the full transcript.
+`;
+}
+
+export function parseInclude(args, { allowed, fallback = [] }) {
+  const raw = readOption(args, "--include");
+  if (raw === null) return fallback;
+  const values = raw.split(",").map((value) => value.trim()).filter(Boolean);
+  const unknown = values.filter((value) => !allowed.includes(value));
+  if (unknown.length > 0) {
+    throw new CliError(
+      "INVALID_ARGUMENT",
+      `Unsupported --include value: ${unknown.join(", ")}`,
+      `Allowed values: ${allowed.join(", ")}`
+    );
+  }
+  return [...new Set(values)];
 }
 
 function parseGlobalArgs(argv) {
@@ -122,8 +150,11 @@ async function commandFolders(args, globals) {
 
 async function commandNotes(args, globals) {
   const sub = args[0];
-  const api = makeApi();
+  if (!sub || sub === "help" || sub === "--help" || sub === "-h" || hasFlag(args, "--help") || hasFlag(args, "-h")) {
+    return notesUsage();
+  }
   if (sub === "list") {
+    const api = makeApi();
     const folderTarget = readOption(args, "--folder");
     const folder = folderTarget ? await api.resolveFolder(folderTarget) : null;
     const params = {
@@ -139,11 +170,14 @@ async function commandNotes(args, globals) {
   if (sub === "get") {
     const noteId = args[1];
     if (!noteId) throw new CliError("INVALID_ARGUMENT", "notes get requires a note id");
-    return await api.getNote(noteId, { includeTranscript: readOption(args, "--include") === "transcript" });
+    const include = parseInclude(args, { allowed: ["summary", "transcript"] });
+    const api = makeApi();
+    return await api.getNote(noteId, { includeTranscript: include.includes("transcript") });
   }
   if (sub === "summary") {
     const noteId = args[1];
     if (!noteId) throw new CliError("INVALID_ARGUMENT", "notes summary requires a note id");
+    const api = makeApi();
     const note = await api.getNote(noteId);
     const format = readOption(args, "--format", "markdown");
     return format === "json" ? note : renderSummaryMarkdown(note);
@@ -151,6 +185,7 @@ async function commandNotes(args, globals) {
   if (sub === "transcript") {
     const noteId = args[1];
     if (!noteId) throw new CliError("INVALID_ARGUMENT", "notes transcript requires a note id");
+    const api = makeApi();
     const note = await api.getNote(noteId, { includeTranscript: true });
     const format = readOption(args, "--format", "markdown");
     return format === "json" ? note.transcript || [] : renderTranscriptMarkdown(note);
@@ -165,10 +200,7 @@ async function commandExport(args) {
   if (!target) throw new CliError("INVALID_ARGUMENT", "export folder requires a folder name or id");
   const outDir = readOption(args, "--out");
   if (!outDir) throw new CliError("INVALID_ARGUMENT", "export folder requires --out <dir>");
-  const include = (readOption(args, "--include", "summary,transcript") || "")
-    .split(",")
-    .map((value) => value.trim())
-    .filter(Boolean);
+  const include = parseInclude(args, { allowed: ["summary", "transcript"], fallback: ["summary", "transcript"] });
   const api = makeApi();
   const folder = await api.resolveFolder(target);
   return await exportFolder({
@@ -193,10 +225,7 @@ async function commandSync(args) {
   const target = explicitFolder || positionalTarget;
   const outDir = readOption(args, "--out");
   if (!outDir) throw new CliError("INVALID_ARGUMENT", "sync requires --out <dir>");
-  const include = (readOption(args, "--include", "summary,transcript") || "")
-    .split(",")
-    .map((value) => value.trim())
-    .filter(Boolean);
+  const include = parseInclude(args, { allowed: ["summary", "transcript"], fallback: ["summary", "transcript"] });
   const api = makeApi();
   const folder = target ? await api.resolveFolder(target) : null;
   return await exportFolder({
@@ -268,6 +297,10 @@ export async function main(argv) {
   const { globals, rest } = parseGlobalArgs(argv);
   try {
     const command = rest[0] || "help";
+    if (command === "help" || command === "--help" || command === "-h" || rest.includes("--help") || rest.includes("-h")) {
+      writeResult(command === "notes" ? notesUsage() : usage(), globals);
+      return;
+    }
     if (command === "--version" || command === "version") {
       if (!globals.skipUpdates) await runUpdateGate(globals);
       process.stdout.write(`${VERSION}\n`);
@@ -275,8 +308,7 @@ export async function main(argv) {
     }
     await runUpdateGate(globals);
     let result;
-    if (command === "help" || command === "--help" || command === "-h") result = usage();
-    else if (command === "skill") result = await commandSkill();
+    if (command === "skill") result = await commandSkill();
     else if (command === "auth") result = await commandAuth(rest.slice(1), globals);
     else if (command === "setup") result = await commandSetup(rest.slice(1));
     else if (command === "status") result = await commandStatus(rest.slice(1), globals);

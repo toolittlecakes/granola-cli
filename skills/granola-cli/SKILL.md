@@ -23,6 +23,7 @@ After reading the full guide:
 granola-cli status
 granola-cli folders list --all --json
 granola-cli notes list --folder ershov --all --jsonl
+granola-cli notes transcript not_1234567890abcd --format markdown
 ```
 
 If the command is not found, install or update it:

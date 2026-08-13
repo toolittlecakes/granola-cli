@@ -34,10 +34,16 @@ List notes in a folder:
 granola-cli notes list --folder itquick --all --jsonl
 ```
 
-Fetch one note with transcript:
+Fetch one full transcript:
 
 ```bash
-granola-cli notes get not_1234567890abcd --include transcript --json
+granola-cli notes transcript not_1234567890abcd --format markdown
+```
+
+Fetch the complete note object with summary and transcript:
+
+```bash
+granola-cli notes get not_1234567890abcd --include summary,transcript --json
 ```
 
 Sync a project folder:

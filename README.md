@@ -45,13 +45,21 @@ granola-cli status
 granola-cli folders list --all --json
 granola-cli folders resolve itquick --json
 granola-cli notes list --folder itquick --all --jsonl
-granola-cli notes get not_... --include transcript --json
+granola-cli notes get not_... --include summary,transcript --json
 granola-cli notes summary not_... --format markdown
 granola-cli notes transcript not_... --format markdown
 granola-cli sync itquick --out calls/granola_itquick --include summary,transcript --skip-existing
 granola-cli sync --out calls/granola_all --include summary,transcript --skip-existing
 granola-cli export folder itquick --out calls/granola_itquick --include summary,transcript --skip-existing
 ```
+
+For one full transcript, prefer the explicit command:
+
+```bash
+granola-cli notes transcript not_... --format markdown
+```
+
+`notes get --include` accepts `summary`, `transcript`, or a comma-separated combination. Unknown values fail explicitly instead of being ignored.
 
 ## Agent Skill
 
