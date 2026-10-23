@@ -26,6 +26,14 @@ granola-cli auth <token>
 
 The token is stored in `~/.granola-cli/config.json` with file mode `0600` where supported. The CLI does not read `~/.env` and never prints the token.
 
+For sandboxes, CI, and agent runs, pass the token through the environment instead of writing a file:
+
+```bash
+GRANOLA_API_KEY=<token> granola-cli folders list
+```
+
+`GRANOLA_API_KEY` takes precedence over the stored config. Nothing is written to disk, and `auth clear` leaves the variable alone.
+
 Check auth state:
 
 ```bash

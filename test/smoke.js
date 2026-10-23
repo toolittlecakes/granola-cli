@@ -4,21 +4,29 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { parseInclude } from "../src/index.js";
+import { getEnvApiKey } from "../src/auth.js";
 import { isNewerVersion } from "../src/update-gate.js";
 
 const tmpHome = fs.mkdtempSync(path.join(os.tmpdir(), "granola-cli-test-"));
 
-function run(args) {
+function run(args, extraEnv = {}) {
+  const { GRANOLA_API_KEY: _inherited, ...baseEnv } = process.env;
   return spawnSync(process.execPath, ["bin/granola-cli", "--skip-updates", ...args], {
     cwd: new URL("..", import.meta.url),
     encoding: "utf8",
-    env: { ...process.env, GRANOLA_CLI_HOME: tmpHome }
+    env: { ...baseEnv, GRANOLA_CLI_HOME: tmpHome, ...extraEnv }
   });
 }
 
-assert.equal(isNewerVersion("0.1.1", "0.1.0"), true);
-assert.equal(isNewerVersion("0.1.0", "0.1.0"), false);
+assert.equal(isNewerVersion("0.1.1", "0.1.0"), true);assert.equal(isNewerVersion("0.1.0", "0.1.0"), false);
 assert.equal(isNewerVersion("0.0.9", "0.1.0"), false);
+assert.equal(getEnvApiKey(), null);
+process.env.GRANOLA_API_KEY = "  env-token  ";
+assert.equal(getEnvApiKey(), "env-token");
+process.env.GRANOLA_API_KEY = "   ";
+assert.equal(getEnvApiKey(), null);
+delete process.env.GRANOLA_API_KEY;
+
 assert.deepEqual(
   parseInclude(["--include", "summary,transcript"], { allowed: ["summary", "transcript"] }),
   ["summary", "transcript"]
@@ -59,6 +67,27 @@ assert.equal(authConfig.apiKey, "test-token");
 
 const statusAfterAuth = run(["status", "--json"]);
 assert.equal(statusAfterAuth.status, 0, statusAfterAuth.stderr);
-assert.equal(JSON.parse(statusAfterAuth.stdout).auth.configured, true);
+const parsedAfterAuth = JSON.parse(statusAfterAuth.stdout);
+assert.equal(parsedAfterAuth.auth.configured, true);
+assert.equal(parsedAfterAuth.auth.source, "config");
+
+const envStatus = run(["auth", "status", "--json"], { GRANOLA_API_KEY: "env-token" });
+assert.equal(envStatus.status, 0, envStatus.stderr);
+const parsedEnvStatus = JSON.parse(envStatus.stdout);
+assert.equal(parsedEnvStatus.auth.configured, true);
+assert.equal(parsedEnvStatus.auth.source, "env");
+
+const envStatusText = run(["auth", "status"], { GRANOLA_API_KEY: "env-token" });
+assert.equal(envStatusText.status, 0, envStatusText.stderr);
+assert.match(envStatusText.stdout, /auth: configured via env/);
+
+const envClear = run(["auth", "clear"], { GRANOLA_API_KEY: "env-token" });
+assert.equal(envClear.status, 0, envClear.stderr);
+assert.match(envClear.stdout, /GRANOLA_API_KEY is set and still takes precedence/);
+assert.equal(JSON.parse(fs.readFileSync(path.join(tmpHome, "config.json"), "utf8")).apiKey, undefined);
+
+const envOnly = run(["status", "--json"], { GRANOLA_API_KEY: "env-token" });
+assert.equal(envOnly.status, 0, envOnly.stderr);
+assert.equal(JSON.parse(envOnly.stdout).auth.source, "env");
 
 console.log("smoke ok");

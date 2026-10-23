@@ -6,7 +6,7 @@ allowed-tools: Bash(granola-cli:*)
 
 # granola-cli
 
-Use `granola-cli` for Granola meeting-note access through the official Public API. It is read-only and expects a token saved by `granola-cli auth <token>` in `~/.granola-cli/config.json`.
+Use `granola-cli` for Granola meeting-note access through the official Public API. It is read-only and expects a token saved by `granola-cli auth <token>` in `~/.granola-cli/config.json`, or supplied through the `GRANOLA_API_KEY` environment variable, which takes precedence.
 
 First safe command:
 
@@ -74,7 +74,7 @@ The sync/export writes:
 ## Rules
 
 - Do not print the saved Granola API token.
-- Do not read `~/.env` for this connector; use `granola-cli auth <token>` once.
+- Do not read `~/.env` for this connector; use `granola-cli auth <token>` once, or rely on `GRANOLA_API_KEY` when the runtime injects it.
 - Prefer `--json` or `--jsonl` for agent parsing.
 - Use `--skip-existing` for repeated project exports.
 - Use `--refresh-changed` only when you want notes with changed `updated_at` to be re-fetched.

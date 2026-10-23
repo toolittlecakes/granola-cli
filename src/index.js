@@ -1,7 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { clearApiKey, getApiKey, getAuthStatus, hasConfiguredApiKey, saveApiKey } from "./auth.js";
+import { API_KEY_ENV, clearApiKey, getApiKey, getAuthStatus, getEnvApiKey, saveApiKey } from "./auth.js";
 import { CliError, normalizeError } from "./errors.js";
 import { exportFolder } from "./export.js";
 import { GranolaApi } from "./granola-api.js";
@@ -34,6 +34,7 @@ Usage:
 
 Auth:
   Run granola-cli auth <token> once. The token is stored in ~/.granola-cli/config.json.
+  Set ${API_KEY_ENV} to pass the token through the environment; it takes precedence over the stored config.
 
 Docs:
   https://docs.granola.ai/introduction
@@ -108,13 +109,15 @@ function writeResult(result, { json = false, jsonl = false } = {}) {
 }
 
 async function commandStatus(args, globals) {
+  const auth = getAuthStatus();
   const result = {
     ok: true,
     package: PACKAGE_NAME,
     version: VERSION,
     auth: {
-      configPath: getAuthStatus().configPath,
-      configured: hasConfiguredApiKey()
+      configPath: auth.configPath,
+      configured: auth.configured,
+      source: auth.source
     },
     apiBaseUrl: "https://public-api.granola.ai/v1"
   };
@@ -126,7 +129,7 @@ async function commandStatus(args, globals) {
   if (globals.json) return result;
   return [
     `granola-cli ${VERSION}`,
-    `auth: ${result.auth.configured ? "configured" : "not configured"}`,
+    `auth: ${result.auth.configured ? `configured via ${result.auth.source}` : "not configured"}`,
     `api: ${hasFlag(args, "--check-api") ? "reachable" : "not checked"}`
   ].join("\n");
 }
@@ -254,14 +257,17 @@ async function commandAuth(args, globals) {
     const status = getAuthStatus();
     if (globals.json) return { ok: true, auth: status };
     return [
-      `auth: ${status.configured ? "configured" : "not configured"}`,
+      `auth: ${status.configured ? `configured via ${status.source}` : "not configured"}`,
       `config: ${status.configPath}`,
       `state: ${status.stateDir}`
     ].join("\n");
   }
   if (sub === "clear" || sub === "logout") {
     const configPath = clearApiKey();
-    return globals.json ? { ok: true, configured: false, configPath } : `auth cleared: ${configPath}`;
+    const envNote = getEnvApiKey() ? ` (${API_KEY_ENV} is set and still takes precedence)` : "";
+    return globals.json
+      ? { ok: true, configured: Boolean(getEnvApiKey()), configPath }
+      : `auth cleared: ${configPath}${envNote}`;
   }
   if (sub.startsWith("--")) throw new CliError("INVALID_ARGUMENT", `Unknown auth option: ${sub}`);
   const configPath = saveApiKey(sub);

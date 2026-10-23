@@ -3,6 +3,13 @@ import os from "node:os";
 import path from "node:path";
 import { CliError } from "./errors.js";
 
+export const API_KEY_ENV = "GRANOLA_API_KEY";
+
+export function getEnvApiKey() {
+  const apiKey = (process.env[API_KEY_ENV] || "").trim();
+  return apiKey || null;
+}
+
 export function getStateDir() {
   return process.env.GRANOLA_CLI_HOME || path.join(os.homedir(), ".granola-cli");
 }
@@ -67,8 +74,10 @@ export function clearApiKey() {
 export function getAuthStatus() {
   const configPath = getConfigPath();
   const config = readConfig();
+  const envApiKey = getEnvApiKey();
   return {
-    configured: Boolean(config.apiKey),
+    configured: Boolean(envApiKey || config.apiKey),
+    source: envApiKey ? "env" : config.apiKey ? "config" : null,
     configPath,
     stateDir: getStateDir(),
     updatedAt: config.updatedAt || null
@@ -76,16 +85,15 @@ export function getAuthStatus() {
 }
 
 export function getApiKey({ required = true } = {}) {
-  const config = readConfig();
-  const apiKey = config.apiKey;
+  const apiKey = getEnvApiKey() || readConfig().apiKey || null;
   if (!apiKey && required) {
     throw new CliError(
       "AUTH_REQUIRED",
       "Granola API token is not configured",
-      "Run: granola-cli auth <token>"
+      `Set ${API_KEY_ENV} or run: granola-cli auth <token>`
     );
   }
-  return apiKey || null;
+  return apiKey;
 }
 
 export function hasConfiguredApiKey() {
